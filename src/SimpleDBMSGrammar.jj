@@ -12,6 +12,8 @@ public class SimpleDBMSParser
   public static final int PRINT_CREATE_TABLE = 1;
   public static final int PRINT_DROP_TABLE = 2;
   public static final int PRINT_DESC = 3;
+  public static final int PRINT_SHOW_TABLES = 4;
+  public static final int PRINT_INSERT = 5;
 
   public static void main(String args []) throws ParseException
   {
@@ -48,6 +50,12 @@ public class SimpleDBMSParser
       case PRINT_DESC:
         System.out.println("\'DESC\' requested");
         break;
+      case PRINT_SHOW_TABLES:
+        System.out.println("\'SHOW TABLES\' requested");
+        break;
+      case PRINT_INSERT:
+        System.out.println("\'INSERT\' requested");
+        break;
     }
   }
 }
@@ -65,10 +73,14 @@ TOKEN : /* Keywords */
 | < CREATE_TABLE : "create table" >
 | < DROP_TABLE : "drop table" >
 | < DESC : "desc" >
+| < SHOW_TABLES : "show tables" >
+| < INSERT_INTO : "insert into" >
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
 | < REFERENCES : "references" >
+| < VALUES : "values" >
+| < NULL : "null" >
 }
 
 TOKEN :
@@ -77,6 +89,7 @@ TOKEN :
 | < LEFT_PAREN : "(" >
 | < RIGHT_PAREN : ")" >
 | < ASTERISK : "*" >
+| < QUOTE : "'" >
 | < COMMA : "," >
 | < UNDERSCORE : "_" >
 | < SIGN : "+" | "-" >
@@ -84,6 +97,13 @@ TOKEN :
 | < LEGAL_IDENTIFIER : < ALPHABET > (< ALPHABET > | < UNDERSCORE >)* >
 | < ALPHABET : [ "A"-"Z", "a"-"z" ] >
 | < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >
+| < CHAR_STRING : < QUOTE > (< NON_QUOTE_CHARACTER >)* < QUOTE > >
+| < NON_QUOTE_CHARACTER : < DIGIT > | < ALPHABET >
+                        | < NON_QUOTE_SPECIAL_CHARACTERS > | " " >
+| < NON_QUOTE_SPECIAL_CHARACTERS : [ "!", "#"-"/", ":"-"@", "["-"_", "{"-"~" ] >
+| < DATE_VALUE : < NNNN > "-" < NN > "-" < NN > >
+| < NNNN : < DIGIT > < DIGIT > < DIGIT > < DIGIT > >
+| < NN : < DIGIT > < DIGIT > >
 }
 
 void command() :
@@ -135,6 +155,18 @@ int query() :
       return PRINT_DESC;
     }
   )
+| (
+    showTablesQuery()
+    {
+      return PRINT_SHOW_TABLES;
+    }
+  )
+| (
+    insertQuery()
+    {
+      return PRINT_INSERT;
+    }
+  )
 }
 
 void createTableQuery() :
@@ -157,6 +189,57 @@ void descQuery() :
 {
   < DESC >
   tableNameList()
+}
+
+void showTablesQuery() :
+{}
+{
+  < SHOW_TABLES >
+}
+
+void insertQuery() :
+{}
+{
+  < INSERT_INTO >
+  tableName()
+  insertColumnsAndSource()
+}
+
+void insertColumnsAndSource() :
+{}
+{
+  (
+    columnNameList()
+  )?
+  valueList()
+}
+
+void valueList() :
+{}
+{
+  < VALUES >
+  < LEFT_PAREN >
+  value()
+  (
+    < COMMA >
+    value()
+  )*
+  < RIGHT_PAREN >
+}
+
+void value() :
+{}
+{
+  < NULL >
+| comparableValue()
+}
+
+void comparableValue() :
+{}
+{
+  < INT_VALUE >
+| < CHAR_STRING >
+| < DATE_VALUE >
 }
 
 void tableElementList() :

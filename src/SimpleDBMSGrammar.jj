@@ -1,21 +1,52 @@
-options{  static = true;
-  DEBUG_PARSER = false;}PARSER_BEGIN(SimpleDBMSParser)
-public class SimpleDBMSParser{
+options
+{
+  static = true;
+  DEBUG_PARSER = false;
+}
+
+PARSER_BEGIN(SimpleDBMSParser)
+
+public class SimpleDBMSParser
+{
   public static final int PRINT_SYNTAX_ERROR = 0;
   public static final int PRINT_CREATE_TABLE = 1;
-    public static void main(String args[]) throws ParseException  {    SimpleDBMSParser parser = new SimpleDBMSParser(System.in);
-    while (true)    {      try      {
-        System.out.print("DB_2015-12345> ");        parser.command();      }      catch (Exception e)      {        printMessage(PRINT_SYNTAX_ERROR);        SimpleDBMSParser.ReInit(System.in);      }    }  }
 
-  public static void printMessage(int q)  {
-    switch(q)    {
+  public static void main(String args []) throws ParseException
+  {
+    SimpleDBMSParser parser = new SimpleDBMSParser(System.in);
+
+    while (true)
+    {
+      try
+      {
+        System.out.print("DB_2013-11395> ");
+        parser.command();
+      }
+      catch (Exception e)
+      {
+        printMessage(PRINT_SYNTAX_ERROR);
+        SimpleDBMSParser.ReInit(System.in);
+      }
+    }
+  }
+
+  public static void printMessage(int q)
+  {
+    switch (q)
+    {
       case PRINT_SYNTAX_ERROR:
-      	System.out.println("Syntax error");
-      	break;
+        System.out.println("Syntax error");
+        break;
       case PRINT_CREATE_TABLE:
-      	System.out.println("\'CREATE TABLE\' requested");
-      	break;    }
-  }}PARSER_END(SimpleDBMSParser)SKIP : { " " | "\r" | "\t" | "\n" }
+        System.out.println("\'CREATE TABLE\' requested");
+        break;
+    }
+  }
+}
+
+PARSER_END(SimpleDBMSParser)
+
+SKIP : { " " | "\r" | "\t" | "\n" }
 
 TOKEN : /* Keywords */
 {
@@ -27,103 +58,145 @@ TOKEN : /* Keywords */
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
-| < REFERENCES : "references" >}TOKEN :{  < SEMICOLON : ";" >
+| < REFERENCES : "references" >
+}
+
+TOKEN :
+{
+  < SEMICOLON : ";" >
 | < LEFT_PAREN : "(" >
 | < RIGHT_PAREN : ")" >
 | < COMMA : "," >
 | < UNDERSCORE : "_" >
-| < SIGN : "+" | "-" >| < DIGIT : [ "0"-"9" ] >
+| < SIGN : "+" | "-" >
+| < DIGIT : [ "0"-"9" ] >
 | < LEGAL_IDENTIFIER : < ALPHABET > (< ALPHABET > | < UNDERSCORE >)* >
 | < ALPHABET : [ "A"-"Z", "a"-"z" ] >
-| < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >}
+| < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >
+}
 
 void command() :
-{}{  queryList()
+{}
+{
+  queryList()
 | (
     < EXIT >
     < SEMICOLON >
-    {      System.exit(0);
+    {
+      System.exit(0);
     }
-  ) }
+  )
+}
 
 void queryList() :
 {
   int q;
-}{
-  (    q = query()
+}
+{
+  (
+    q = query()
     < SEMICOLON >
-    {      System.out.print("DB_2015-12345> ");      printMessage(q);
+    {
+      System.out.print("DB_2013-11395> ");
+      printMessage(q);
     }
-  )+}
+  )+
+}
 
 int query() :
 {
   int q;
-}{  (    createTableQuery()
-    {      q = PRINT_CREATE_TABLE;
+}
+{
+  (
+    createTableQuery()
+    {
+      q = PRINT_CREATE_TABLE;
     }
   )
-  (    {      return q;
+  (
+    {
+      return q;
     }
   )
 }
 
 void createTableQuery() :
-{}{  < CREATE_TABLE >
+{}
+{
+  < CREATE_TABLE >
   tableName()
   tableElementList()
 }
 
 void tableElementList() :
-{}{
+{}
+{
   < LEFT_PAREN >
   tableElement()
-  (    < COMMA >
+  (
+    < COMMA >
     tableElement()
   )*
-  < RIGHT_PAREN >}
+  < RIGHT_PAREN >
+}
 
 void tableElement() :
-{}{
+{}
+{
   columnDefinition()
-| tableConstraintDefinition()}
+| tableConstraintDefinition()
+}
 
 void columnDefinition() :
-{}{  columnName()
+{}
+{
+  columnName()
   dataType()
-  (    < NOT_NULL >
+  (
+    < NOT_NULL >
   )?
 }
 
 void tableConstraintDefinition() :
-{}{  primaryKeyConstraint()
+{}
+{
+  primaryKeyConstraint()
 | referentialConstraint()
 }
 
 void primaryKeyConstraint() :
-{}{
+{}
+{
   < PRIMARY_KEY >
-  columnNameList()}
+  columnNameList()
+}
 
 void referentialConstraint() :
-{}{
+{}
+{
   < FOREIGN_KEY >
   columnNameList()
   < REFERENCES >
   tableName()
-  columnNameList()}
+  columnNameList()
+}
 
 void columnNameList() :
-{}{
+{}
+{
   < LEFT_PAREN >
   columnName()
-  (    < COMMA >
+  (
+    < COMMA >
     columnName()
   )*
-  < RIGHT_PAREN >}
+  < RIGHT_PAREN >
+}
 
 void dataType() :
-{}{
+{}
+{
   < INT >
 | (
     < CHAR >
@@ -135,9 +208,13 @@ void dataType() :
 }
 
 void tableName() :
-{}{
-  < LEGAL_IDENTIFIER >}
+{}
+{
+  < LEGAL_IDENTIFIER >
+}
 
 void columnName() :
-{}{
-  < LEGAL_IDENTIFIER >}
+{}
+{
+  < LEGAL_IDENTIFIER >
+}

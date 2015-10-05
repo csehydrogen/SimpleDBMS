@@ -10,6 +10,7 @@ public class SimpleDBMSParser
 {
   public static final int PRINT_SYNTAX_ERROR = 0;
   public static final int PRINT_CREATE_TABLE = 1;
+  public static final int PRINT_DROP_TABLE = 2;
 
   public static void main(String args []) throws ParseException
   {
@@ -40,6 +41,9 @@ public class SimpleDBMSParser
       case PRINT_CREATE_TABLE:
         System.out.println("\'CREATE TABLE\' requested");
         break;
+      case PRINT_DROP_TABLE:
+        System.out.println("\'DROP TABLE\' requested");
+        break;
     }
   }
 }
@@ -55,6 +59,7 @@ TOKEN : /* Keywords */
 | < CHAR : "char" >
 | < DATE : "date" >
 | < CREATE_TABLE : "create table" >
+| < DROP_TABLE : "drop table" >
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
@@ -66,6 +71,7 @@ TOKEN :
   < SEMICOLON : ";" >
 | < LEFT_PAREN : "(" >
 | < RIGHT_PAREN : ")" >
+| < ASTERISK : "*" >
 | < COMMA : "," >
 | < UNDERSCORE : "_" >
 | < SIGN : "+" | "-" >
@@ -104,19 +110,18 @@ void queryList() :
 }
 
 int query() :
-{
-  int q;
-}
+{}
 {
   (
     createTableQuery()
     {
-      q = PRINT_CREATE_TABLE;
+      return PRINT_CREATE_TABLE;
     }
   )
-  (
+| (
+    dropTableQuery()
     {
-      return q;
+      return PRINT_DROP_TABLE;
     }
   )
 }
@@ -127,6 +132,13 @@ void createTableQuery() :
   < CREATE_TABLE >
   tableName()
   tableElementList()
+}
+
+void dropTableQuery() :
+{}
+{
+  < DROP_TABLE >
+  tableNameList()
 }
 
 void tableElementList() :
@@ -211,6 +223,19 @@ void tableName() :
 {}
 {
   < LEGAL_IDENTIFIER >
+}
+
+void tableNameList() :
+{}
+{
+  < ASTERISK >
+| (
+    tableName()
+    (
+      < COMMA >
+      tableName()
+    )*
+  )
 }
 
 void columnName() :

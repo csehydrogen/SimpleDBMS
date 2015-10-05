@@ -15,6 +15,7 @@ public class SimpleDBMSParser
   public static final int PRINT_SHOW_TABLES = 4;
   public static final int PRINT_INSERT = 5;
   public static final int PRINT_DELETE = 6;
+  public static final int PRINT_SELECT = 7;
 
   public static void main(String args []) throws ParseException
   {
@@ -60,6 +61,9 @@ public class SimpleDBMSParser
       case PRINT_DELETE:
         System.out.println("\'DELETE\' requested");
         break;
+      case PRINT_SELECT:
+        System.out.println("\'SELECT\' requested");
+        break;
     }
   }
 }
@@ -80,6 +84,9 @@ TOKEN : /* Keywords */
 | < SHOW_TABLES : "show tables" >
 | < INSERT_INTO : "insert into" >
 | < DELETE_FROM : "delete from" >
+| < SELECT : "select" >
+| < AS : "as" >
+| < FROM : "from" >
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
@@ -185,6 +192,12 @@ int query() :
       return PRINT_DELETE;
     }
   )
+| (
+    selectQuery()
+    {
+      return PRINT_SELECT;
+    }
+  )
 }
 
 void createTableQuery() :
@@ -230,6 +243,73 @@ void deleteQuery() :
   tableName()
   (
     whereClause()
+  )?
+}
+
+void selectQuery() :
+{}
+{
+  < SELECT >
+  selectList()
+  tableExpression()
+}
+
+void selectList() :
+{}
+{
+  < ASTERISK >
+| (
+    selectedColumn()
+    (
+      < COMMA >
+      selectedColumn()
+    )*
+  )
+}
+
+void selectedColumn() :
+{}
+{
+  tableAndColumnName()
+  (
+    < AS >
+    columnName()
+  )?
+}
+
+void tableExpression() :
+{}
+{
+  fromClause()
+  (
+    whereClause()
+  )?
+}
+
+void fromClause() :
+{}
+{
+  < FROM >
+  tableReferenceList()
+}
+
+void tableReferenceList() :
+{}
+{
+  referedTable()
+  (
+    < COMMA >
+    referedTable()
+  )*
+}
+
+void referedTable() :
+{}
+{
+  tableName()
+  (
+    < AS >
+    tableName()
   )?
 }
 

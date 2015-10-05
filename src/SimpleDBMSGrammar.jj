@@ -11,6 +11,7 @@ public class SimpleDBMSParser
   public static final int PRINT_SYNTAX_ERROR = 0;
   public static final int PRINT_CREATE_TABLE = 1;
   public static final int PRINT_DROP_TABLE = 2;
+  public static final int PRINT_DESC = 3;
 
   public static void main(String args []) throws ParseException
   {
@@ -44,6 +45,9 @@ public class SimpleDBMSParser
       case PRINT_DROP_TABLE:
         System.out.println("\'DROP TABLE\' requested");
         break;
+      case PRINT_DESC:
+        System.out.println("\'DESC\' requested");
+        break;
     }
   }
 }
@@ -60,6 +64,7 @@ TOKEN : /* Keywords */
 | < DATE : "date" >
 | < CREATE_TABLE : "create table" >
 | < DROP_TABLE : "drop table" >
+| < DESC : "desc" >
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
@@ -124,6 +129,12 @@ int query() :
       return PRINT_DROP_TABLE;
     }
   )
+| (
+    descQuery()
+    {
+      return PRINT_DESC;
+    }
+  )
 }
 
 void createTableQuery() :
@@ -138,6 +149,13 @@ void dropTableQuery() :
 {}
 {
   < DROP_TABLE >
+  tableNameList()
+}
+
+void descQuery() :
+{}
+{
+  < DESC >
   tableNameList()
 }
 

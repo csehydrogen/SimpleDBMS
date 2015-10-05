@@ -14,6 +14,7 @@ public class SimpleDBMSParser
   public static final int PRINT_DESC = 3;
   public static final int PRINT_SHOW_TABLES = 4;
   public static final int PRINT_INSERT = 5;
+  public static final int PRINT_DELETE = 6;
 
   public static void main(String args []) throws ParseException
   {
@@ -56,6 +57,9 @@ public class SimpleDBMSParser
       case PRINT_INSERT:
         System.out.println("\'INSERT\' requested");
         break;
+      case PRINT_DELETE:
+        System.out.println("\'DELETE\' requested");
+        break;
     }
   }
 }
@@ -75,12 +79,18 @@ TOKEN : /* Keywords */
 | < DESC : "desc" >
 | < SHOW_TABLES : "show tables" >
 | < INSERT_INTO : "insert into" >
+| < DELETE_FROM : "delete from" >
 | < NOT_NULL : "not null" >
 | < PRIMARY_KEY : "primary key" >
 | < FOREIGN_KEY : "foreign key" >
 | < REFERENCES : "references" >
 | < VALUES : "values" >
 | < NULL : "null" >
+| < WHERE : "where" >
+| < OR : "or" >
+| < AND : "and" >
+| < NOT : "not" >
+| < IS : "is" >
 }
 
 TOKEN :
@@ -91,13 +101,15 @@ TOKEN :
 | < ASTERISK : "*" >
 | < QUOTE : "'" >
 | < COMMA : "," >
+| < PERIOD : "." >
 | < UNDERSCORE : "_" >
 | < SIGN : "+" | "-" >
+| < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >
 | < DIGIT : [ "0"-"9" ] >
 | < LEGAL_IDENTIFIER : < ALPHABET > (< ALPHABET > | < UNDERSCORE >)* >
 | < ALPHABET : [ "A"-"Z", "a"-"z" ] >
-| < INT_VALUE : (< SIGN >)? (< DIGIT >)+ >
 | < CHAR_STRING : < QUOTE > (< NON_QUOTE_CHARACTER >)* < QUOTE > >
+| < COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!=" >
 | < NON_QUOTE_CHARACTER : < DIGIT > | < ALPHABET >
                         | < NON_QUOTE_SPECIAL_CHARACTERS > | " " >
 | < NON_QUOTE_SPECIAL_CHARACTERS : [ "!", "#"-"/", ":"-"@", "["-"_", "{"-"~" ] >
@@ -167,6 +179,12 @@ int query() :
       return PRINT_INSERT;
     }
   )
+| (
+    deleteQuery()
+    {
+      return PRINT_DELETE;
+    }
+  )
 }
 
 void createTableQuery() :
@@ -203,6 +221,135 @@ void insertQuery() :
   < INSERT_INTO >
   tableName()
   insertColumnsAndSource()
+}
+
+void deleteQuery() :
+{}
+{
+  < DELETE_FROM >
+  tableName()
+  (
+    whereClause()
+  )?
+}
+
+void whereClause() :
+{}
+{
+  < WHERE >
+  booleanValueExpression()
+}
+
+// < BOOLEAN TERM > | < BOOLEAN VALUE EXPRESSION > or < BOOLEAN TERM >
+// changed to
+// < BOOLEAN TERM > [{ or < BOOLEAN TERM > }...]
+// to remove left resursion
+void booleanValueExpression() :
+{}
+{
+  booleanTerm()
+  (
+    < OR >
+    booleanTerm()
+  )*
+}
+
+// < BOOLEAN FACTOR > | < BOOLEAN TERM > and < BOOLEAN FACTOR >
+// changed to
+// < BOOLEAN FACTOR > [{ and < BOOLEAN FACTOR > }...]
+// to remove left resursion
+void booleanTerm() :
+{}
+{
+  booleanFactor()
+  (
+    < AND >
+    booleanFactor()
+  )*
+}
+
+void booleanFactor() :
+{}
+{
+  (
+    < NOT >
+  )?
+  booleanTest()
+}
+
+void booleanTest() :
+{}
+{
+  predicate()
+| parenthesizedBooleanExpression()
+}
+
+void parenthesizedBooleanExpression() :
+{}
+{
+  < LEFT_PAREN >
+  booleanValueExpression()
+  < RIGHT_PAREN >
+}
+
+// < COMPARISON PREDICATE > | < NULL PREDICATE > have common prefixes of length 2
+// so it changed to
+//   (
+//     < COMPARABLE VALUE > < COMP OP > < COMP OPERAND >
+//   )
+// | (
+//     < TABLE AND COLUMN NAME >
+//     ( < COMP OP > < COMP OPERAND > | < NULL OPERATION > )
+//   )
+// to reduce length to 1
+void predicate() :
+{}
+{
+  (
+    comparableValue()
+    < COMP_OP >
+    compOperand()
+  )
+| (
+    tableAndColumnName()
+    (
+      (
+        < COMP_OP >
+        compOperand()
+      )
+    | nullOperation()
+    )
+  )
+}
+
+void compOperand() :
+{}
+{
+  comparableValue()
+| tableAndColumnName()
+}
+
+// [ < TABLE NAME > < PERIOD > ] < COLUMN NAME >
+// need 2 LOOKAHEAD
+void tableAndColumnName() :
+{}
+{
+  (
+    LOOKAHEAD(2)
+    tableName()
+    < PERIOD >
+  )?
+  columnName()
+}
+
+void nullOperation() :
+{}
+{
+  < IS >
+  (
+    < NOT_NULL >
+  | < NULL >
+  )
 }
 
 void insertColumnsAndSource() :

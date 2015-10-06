@@ -1,0 +1,12 @@
+create table a(a char(0), a date not null, a int, primary key(a, a), foreign key(a, a) references a(a, a));
+create table account(account_number int not null, branch_name char(15), primary key(account_number));
+drop table account; drop table *; drop table a, a;
+desc account; desc *; desc a, a;
+show tables;
+insert into account values(9732, 'Perryridge');
+insert into a (a, a) values (null, +01234, '!#$%&()*+,-./:;<=>?@[\]^_`{|}~', 1234-56-78);
+delete from account where branch_name = 'Perryridge';
+delete from a where a.b < c.d and not (1 > e.f and g.h is null) or i.j is not null and not 'a' = 'b' or (0000-00-00 != 1111-11-11 and 'a' <= 'b' or 'c' >= 'd');
+select * from account;
+select customer_name, borrower.loan_number, amount from borrower, loan where borrower.loan_number = loan.loan_number and branch_name = 'Perryridge';
+select a_ from b_c as d_e, f as g where not xyz.vw is null;

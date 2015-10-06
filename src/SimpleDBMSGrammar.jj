@@ -119,7 +119,7 @@ TOKEN :
 | < COMP_OP : "<" | ">" | "=" | ">=" | "<=" | "!=" >
 | < NON_QUOTE_CHARACTER : < DIGIT > | < ALPHABET >
                         | < NON_QUOTE_SPECIAL_CHARACTERS > | " " >
-| < NON_QUOTE_SPECIAL_CHARACTERS : [ "!", "#"-"/", ":"-"@", "["-"_", "{"-"~" ] >
+| < NON_QUOTE_SPECIAL_CHARACTERS : [ "!", "#"-"&", "("-"/", ":"-"@", "["-"`", "{"-"~" ] >
 | < DATE_VALUE : < NNNN > "-" < NN > "-" < NN > >
 | < NNNN : < DIGIT > < DIGIT > < DIGIT > < DIGIT > >
 | < NN : < DIGIT > < DIGIT > >

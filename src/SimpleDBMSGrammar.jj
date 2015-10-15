@@ -6,19 +6,28 @@ options
 
 PARSER_BEGIN(SimpleDBMSParser)
 
+import java.io.File;
+import com.sleepycat.je.Database;
+import com.sleepycat.je.DatabaseConfig;
+import com.sleepycat.je.Environment;
+import com.sleepycat.je.EnvironmentConfig;
+
 public class SimpleDBMSParser
 {
-  public static final int PRINT_SYNTAX_ERROR = 0;
-  public static final int PRINT_CREATE_TABLE = 1;
-  public static final int PRINT_DROP_TABLE = 2;
-  public static final int PRINT_DESC = 3;
-  public static final int PRINT_SHOW_TABLES = 4;
-  public static final int PRINT_INSERT = 5;
-  public static final int PRINT_DELETE = 6;
-  public static final int PRINT_SELECT = 7;
+  private static Environment dbEnv = null;
+  private static Database db = null;
 
   public static void main(String args []) throws ParseException
   {
+    EnvironmentConfig envConfig = new EnvironmentConfig();
+    envConfig.setAllowCreate(true);
+    dbEnv = new Environment(new File("db"), envConfig);
+
+    DatabaseConfig dbConfig = new DatabaseConfig();
+    dbConfig.setAllowCreate(true);
+    //dbConfig.setSortedDuplicates(true);
+    db = dbEnv.openDatabase(null, "db", dbConfig);
+
     SimpleDBMSParser parser = new SimpleDBMSParser(System.in);
 
     while (true)
@@ -30,40 +39,9 @@ public class SimpleDBMSParser
       }
       catch (Exception e)
       {
-        printMessage(PRINT_SYNTAX_ERROR);
+        Message.print(Message.SYNTAX_ERROR);
         SimpleDBMSParser.ReInit(System.in);
       }
-    }
-  }
-
-  public static void printMessage(int q)
-  {
-    switch (q)
-    {
-      case PRINT_SYNTAX_ERROR:
-        System.out.println("Syntax error");
-        break;
-      case PRINT_CREATE_TABLE:
-        System.out.println("\'CREATE TABLE\' requested");
-        break;
-      case PRINT_DROP_TABLE:
-        System.out.println("\'DROP TABLE\' requested");
-        break;
-      case PRINT_DESC:
-        System.out.println("\'DESC\' requested");
-        break;
-      case PRINT_SHOW_TABLES:
-        System.out.println("\'SHOW TABLES\' requested");
-        break;
-      case PRINT_INSERT:
-        System.out.println("\'INSERT\' requested");
-        break;
-      case PRINT_DELETE:
-        System.out.println("\'DELETE\' requested");
-        break;
-      case PRINT_SELECT:
-        System.out.println("\'SELECT\' requested");
-        break;
     }
   }
 }
@@ -133,6 +111,8 @@ void command() :
     < EXIT >
     < SEMICOLON >
     {
+      if(db != null) db.close();
+      if(dbEnv != null) dbEnv.close();
       System.exit(0);
     }
   )
@@ -140,15 +120,15 @@ void command() :
 
 void queryList() :
 {
-  int q;
+  int msgCode;
 }
 {
   (
-    q = query()
+    msgCode = query()
     < SEMICOLON >
     {
       System.out.print("DB_2013-11395> ");
-      printMessage(q);
+      Message.print(msgCode);
     }
   )+
 }
@@ -159,53 +139,55 @@ int query() :
   (
     createTableQuery()
     {
-      return PRINT_CREATE_TABLE;
+      return Message.CREATE_TABLE;
     }
   )
 | (
     dropTableQuery()
     {
-      return PRINT_DROP_TABLE;
+      return Message.DROP_TABLE;
     }
   )
 | (
     descQuery()
     {
-      return PRINT_DESC;
+      return Message.DESC;
     }
   )
 | (
     showTablesQuery()
     {
-      return PRINT_SHOW_TABLES;
+      return Message.SHOW_TABLES;
     }
   )
 | (
     insertQuery()
     {
-      return PRINT_INSERT;
+      return Message.INSERT;
     }
   )
 | (
     deleteQuery()
     {
-      return PRINT_DELETE;
+      return Message.DELETE;
     }
   )
 | (
     selectQuery()
     {
-      return PRINT_SELECT;
+      return Message.SELECT;
     }
   )
 }
 
 void createTableQuery() :
-{}
+{
+  String s;
+}
 {
   < CREATE_TABLE >
-  tableName()
-  tableElementList()
+  s = tableName()
+  tableElementList(s)
 }
 
 void dropTableQuery() :
@@ -469,88 +451,161 @@ void comparableValue() :
 | < DATE_VALUE >
 }
 
-void tableElementList() :
+void tableElementList(String tableName) :
 {}
 {
   < LEFT_PAREN >
-  tableElement()
+  tableElement(tableName)
   (
     < COMMA >
-    tableElement()
+    tableElement(tableName)
   )*
   < RIGHT_PAREN >
 }
 
-void tableElement() :
-{}
+void tableElement(String tableName) :
 {
-  columnDefinition()
-| tableConstraintDefinition()
+  Node.ColumnDefinition cd;
+  Node.PrimaryKeyConstraint pkc;
+  Node.ReferentialConstraint rc;
+}
+{
+  cd = columnDefinition()
+  {
+    cd.print();
+  }
+| pkc = primaryKeyConstraint()
+  {
+    pkc.print();
+  }
+| rc = referentialConstraint()
+  {
+    rc.print();
+  }
 }
 
-void columnDefinition() :
-{}
+Node.ColumnDefinition columnDefinition() :
 {
-  columnName()
-  dataType()
+  String s;
+  Node.DataType dt;
+  Node.ColumnDefinition cd = new Node.ColumnDefinition();
+}
+{
+  s = columnName()
+  {
+    cd.setColumnName(s);
+  }
+  dt = dataType()
+  {
+    cd.setDataType(dt);
+  }
   (
     < NOT_NULL >
+    {
+      cd.setNotNull(true);
+    }
   )?
+  {
+    return cd;
+  }
 }
 
-void tableConstraintDefinition() :
-{}
+Node.PrimaryKeyConstraint primaryKeyConstraint() :
 {
-  primaryKeyConstraint()
-| referentialConstraint()
+  Node.ColumnNameList cnl;
+  Node.PrimaryKeyConstraint pkc = new Node.PrimaryKeyConstraint();
 }
-
-void primaryKeyConstraint() :
-{}
 {
   < PRIMARY_KEY >
-  columnNameList()
+  cnl = columnNameList()
+  {
+    pkc.setKey(cnl);
+    return pkc;
+  }
 }
 
-void referentialConstraint() :
-{}
+Node.ReferentialConstraint referentialConstraint() :
+{
+  String s; Node.ColumnNameList cnl;
+  Node.ReferentialConstraint rc = new Node.ReferentialConstraint();
+}
 {
   < FOREIGN_KEY >
-  columnNameList()
+  cnl = columnNameList()
+  {
+    rc.setReferencing(cnl);
+  }
   < REFERENCES >
-  tableName()
-  columnNameList()
+  s = tableName()
+  cnl = columnNameList()
+  {
+    rc.setTableName(s);
+    rc.setReferenced(cnl);
+    return rc;
+  }
 }
 
-void columnNameList() :
-{}
+Node.ColumnNameList columnNameList() :
+{
+  String s;
+  Node.ColumnNameList cnl = new Node.ColumnNameList();
+}
 {
   < LEFT_PAREN >
-  columnName()
+  s = columnName()
+  {
+    cnl.addColumnName(s);
+  }
   (
     < COMMA >
-    columnName()
+    s = columnName()
+    {
+      cnl.addColumnName(s);
+    }
   )*
   < RIGHT_PAREN >
+  {
+    return cnl;
+  }
 }
 
-void dataType() :
-{}
+Node.DataType dataType() :
 {
-  < INT >
-| (
-    < CHAR >
+  Node.DataType dt = new Node.DataType();
+}
+{
+  (
+    < INT >
+    {
+      dt.setType(Node.DataType.INT);
+    }
+  | < CHAR >
+    {
+      dt.setType(Node.DataType.CHAR);
+    }
     < LEFT_PAREN >
     < INT_VALUE >
+    {
+      dt.setLength(Integer.parseInt(token.image));
+    }
     < RIGHT_PAREN >
+  | < DATE >
+    {
+      dt.setType(Node.DataType.DATE);
+    }
   )
-| < DATE >
+  {
+    return dt;
+  }
 }
 
-void tableName() :
+String tableName() :
 {}
 {
   < LEGAL_IDENTIFIER >
+  {
+    return token.image;
+  }
 }
 
 void tableNameList() :
@@ -566,8 +621,11 @@ void tableNameList() :
   )
 }
 
-void columnName() :
+String columnName() :
 {}
 {
   < LEGAL_IDENTIFIER >
+  {
+    return token.image;
+  }
 }

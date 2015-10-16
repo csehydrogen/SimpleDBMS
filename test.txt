@@ -10,3 +10,27 @@ delete from a where a.b < c.d and not (1 > e.f and g.h is null) or i.j is not nu
 select * from account;
 select customer_name, borrower.loan_number, amount from borrower, loan where borrower.loan_number = loan.loan_number and branch_name = 'Perryridge';
 select a_ from b_c as d_e, f as g where not xyz.vw is null;
+
+drop table *;
+create table account(account_number int not null, branch_name char(15), primary key(account_number));
+create table a(a int, a date);
+create table a(a int, b date, primary key (a, a));
+create table a(a int, b date, primary key (a), primary key (b));
+create table a(a int, b char(2), c date, d int, e char(+011), f date, primary key (a, b, c));
+create table b(a int, b int, foreign key (a, b) references a(a));
+create table b(foreign key (a) references a(a), a int);
+create table b(primary key (a), a int);
+create table b(a int, foreign key (a, a) references a(a, a));
+create table b(a int, foreign key (a) references a(b));
+create table b(a int, foreign key (a) references a(d));
+create table b(a int, foreign key (a) references a(g));
+create table b(a int, foreign key (a) references b(a));
+create table b(a int, primary key (b));
+create table b(a int, foreign key (b) references a(a));
+create table a(a int);
+create table b(a char(-1));
+create table b(Z char(2), y char(2), foreign key (z, Y) references a(B, b), primary key (z));
+drop table a, b, a;
+create table a(a int, b char(2), c date, d int, e char(+011), f date, primary key (a, b, c));
+create table b(Z char(2), y char(2), foreign key (z, Y) references a(B, b), primary key (z));
+drop table *;

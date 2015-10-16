@@ -6,40 +6,26 @@ options
 
 PARSER_BEGIN(SimpleDBMSParser)
 
-import java.io.File;
-import com.sleepycat.je.Database;
-import com.sleepycat.je.DatabaseConfig;
-import com.sleepycat.je.Environment;
-import com.sleepycat.je.EnvironmentConfig;
+import java.util.ArrayList;
 
 public class SimpleDBMSParser
 {
-  private static Environment dbEnv = null;
-  private static Database db = null;
+  private static SchemaManager sm = new SchemaManager();
 
   public static void main(String args []) throws ParseException
   {
-    EnvironmentConfig envConfig = new EnvironmentConfig();
-    envConfig.setAllowCreate(true);
-    dbEnv = new Environment(new File("db"), envConfig);
-
-    DatabaseConfig dbConfig = new DatabaseConfig();
-    dbConfig.setAllowCreate(true);
-    //dbConfig.setSortedDuplicates(true);
-    db = dbEnv.openDatabase(null, "db", dbConfig);
-
     SimpleDBMSParser parser = new SimpleDBMSParser(System.in);
-
     while (true)
     {
       try
       {
-        System.out.print("DB_2013-11395> ");
+        Message.print(Message.EMPTY);
         parser.command();
       }
-      catch (Exception e)
+      catch (ParseException e)
       {
-        Message.print(Message.SYNTAX_ERROR);
+        if(e.currentToken != null)
+          Message.print(Message.SYNTAX_ERROR, false);
         SimpleDBMSParser.ReInit(System.in);
       }
     }
@@ -111,8 +97,7 @@ void command() :
     < EXIT >
     < SEMICOLON >
     {
-      if(db != null) db.close();
-      if(dbEnv != null) dbEnv.close();
+      sm.close();
       System.exit(0);
     }
   )
@@ -120,88 +105,138 @@ void command() :
 
 void queryList() :
 {
-  int msgCode;
+  Message msg;
 }
 {
   (
-    msgCode = query()
+    msg = query()
     < SEMICOLON >
     {
-      System.out.print("DB_2013-11395> ");
-      Message.print(msgCode);
+      msg.print();
     }
   )+
 }
 
-int query() :
-{}
+Message query() :
+{
+  Message msg;
+}
 {
   (
-    createTableQuery()
+    msg = createTableQuery()
     {
-      return Message.CREATE_TABLE;
+      return msg;
     }
   )
 | (
-    dropTableQuery()
+    msg = dropTableQuery()
     {
-      return Message.DROP_TABLE;
+      return msg;
     }
   )
 | (
     descQuery()
     {
-      return Message.DESC;
+      return new Message(Message.EMPTY, false);
     }
   )
 | (
     showTablesQuery()
     {
-      return Message.SHOW_TABLES;
+      return new Message(Message.SHOW_TABLES);
     }
   )
 | (
     insertQuery()
     {
-      return Message.INSERT;
+      return new Message(Message.INSERT);
     }
   )
 | (
     deleteQuery()
     {
-      return Message.DELETE;
+      return new Message(Message.DELETE);
     }
   )
 | (
     selectQuery()
     {
-      return Message.SELECT;
+      return new Message(Message.SELECT);
     }
   )
 }
 
-void createTableQuery() :
+Message createTableQuery() :
 {
-  String s;
+  String s; Table t;
 }
 {
   < CREATE_TABLE >
   s = tableName()
-  tableElementList(s)
+  {
+    if(sm.tableExists(s)) {
+      Message.print(Message.TABLE_EXISTENCE_ERROR);
+      throw new ParseException();
+    }
+    t = new Table(sm, s);
+  }
+  tableElementList(t)
+  {
+    t.save();
+    return new Message(Message.CREATE_TABLE_SUCCESS, s);
+  }
 }
 
-void dropTableQuery() :
-{}
+Message dropTableQuery() :
+{
+  ArrayList<String> l;
+}
 {
   < DROP_TABLE >
-  tableNameList()
+  l = tableNameList()
+  {
+    if(l == null) {
+      sm.dropTables();
+      return new Message(Message.DROP_SUCCESS_ALL_TABLES);
+    }
+    for(String tableName : l) {
+      if(!sm.tableExists(tableName)) {
+        Message.print(Message.NO_SUCH_TABLE);
+        continue;
+      }
+      if(sm.getTable(tableName).isReferenced()) {
+        Message.print(Message.DROP_REFERENCED_TABLE_ERROR, tableName);
+        continue;
+      }
+      sm.dropTable(tableName);
+      Message.print(Message.DROP_SUCCESS, tableName);
+    }
+    return new Message(Message.EMPTY, false);
+  }
 }
 
 void descQuery() :
-{}
+{
+  ArrayList<String> l;
+}
 {
   < DESC >
-  tableNameList()
+  l = tableNameList()
+  {
+    if(l == null)
+      l = sm.getTables();
+    for(String tableName : l) {
+      if(!sm.tableExists(tableName)) {
+        Message.print(Message.NO_SUCH_TABLE);
+        throw new ParseException();
+      }
+    }
+    Message.print(Message.HORIZONTAL_LINE, false);
+    for(String tableName : l) {
+      sm.getTable(tableName).print();
+      Message.print(Message.HORIZONTAL_LINE, false);
+    }
+  }
 }
 
 void showTablesQuery() :
@@ -451,152 +486,127 @@ void comparableValue() :
 | < DATE_VALUE >
 }
 
-void tableElementList(String tableName) :
+void tableElementList(Table t) :
 {}
 {
   < LEFT_PAREN >
-  tableElement(tableName)
+  tableElement(t)
   (
     < COMMA >
-    tableElement(tableName)
+    tableElement(t)
   )*
   < RIGHT_PAREN >
 }
 
-void tableElement(String tableName) :
+void tableElement(Table t) :
+{}
 {
-  Node.ColumnDefinition cd;
-  Node.PrimaryKeyConstraint pkc;
-  Node.ReferentialConstraint rc;
-}
-{
-  cd = columnDefinition()
-  {
-    cd.print();
-  }
-| pkc = primaryKeyConstraint()
-  {
-    pkc.print();
-  }
-| rc = referentialConstraint()
-  {
-    rc.print();
-  }
+  columnDefinition(t)
+| primaryKeyConstraint(t)
+| referentialConstraint(t)
 }
 
-Node.ColumnDefinition columnDefinition() :
+void columnDefinition(Table t) :
 {
   String s;
-  Node.DataType dt;
-  Node.ColumnDefinition cd = new Node.ColumnDefinition();
+  Column col = new Column();
 }
 {
   s = columnName()
   {
-    cd.setColumnName(s);
+    col.setName(s);
   }
-  dt = dataType()
-  {
-    cd.setDataType(dt);
-  }
+  dataType(col)
   (
     < NOT_NULL >
     {
-      cd.setNotNull(true);
+      col.setNotNull(true);
     }
   )?
   {
-    return cd;
+    t.addColumn(col);
   }
 }
 
-Node.PrimaryKeyConstraint primaryKeyConstraint() :
+void primaryKeyConstraint(Table t) :
 {
-  Node.ColumnNameList cnl;
-  Node.PrimaryKeyConstraint pkc = new Node.PrimaryKeyConstraint();
+  ArrayList<String> l;
 }
 {
   < PRIMARY_KEY >
-  cnl = columnNameList()
+  l = columnNameList()
   {
-    pkc.setKey(cnl);
-    return pkc;
+    t.addPrimaryKey(l);
   }
 }
 
-Node.ReferentialConstraint referentialConstraint() :
+void referentialConstraint(Table t) :
 {
-  String s; Node.ColumnNameList cnl;
-  Node.ReferentialConstraint rc = new Node.ReferentialConstraint();
+  String s; ArrayList<String> referencing, referenced;
 }
 {
   < FOREIGN_KEY >
-  cnl = columnNameList()
-  {
-    rc.setReferencing(cnl);
-  }
+  referencing = columnNameList()
   < REFERENCES >
   s = tableName()
-  cnl = columnNameList()
+  referenced = columnNameList()
   {
-    rc.setTableName(s);
-    rc.setReferenced(cnl);
-    return rc;
+    t.addForeignKey(referencing, s, referenced);
   }
 }
 
-Node.ColumnNameList columnNameList() :
+ArrayList<String> columnNameList() :
 {
   String s;
-  Node.ColumnNameList cnl = new Node.ColumnNameList();
+  ArrayList<String> l = new ArrayList<String>();
 }
 {
   < LEFT_PAREN >
   s = columnName()
   {
-    cnl.addColumnName(s);
+    l.add(s);
   }
   (
     < COMMA >
     s = columnName()
     {
-      cnl.addColumnName(s);
+      l.add(s);
     }
   )*
   < RIGHT_PAREN >
   {
-    return cnl;
+    return l;
   }
 }
 
-Node.DataType dataType() :
-{
-  Node.DataType dt = new Node.DataType();
-}
+void dataType(Column col) :
+{}
 {
   (
     < INT >
     {
-      dt.setType(Node.DataType.INT);
+      col.setType(Column.INT);
     }
   | < CHAR >
     {
-      dt.setType(Node.DataType.CHAR);
+      col.setType(Column.CHAR);
     }
     < LEFT_PAREN >
     < INT_VALUE >
     {
-      dt.setLength(Integer.parseInt(token.image));
+      int len = Integer.parseInt(token.image);
+      if(len < 1) {
+        Message.print(Message.CHAR_LENGTH_ERROR);
+        throw new ParseException();
+      }
+      col.setLength(len);
     }
     < RIGHT_PAREN >
   | < DATE >
     {
-      dt.setType(Node.DataType.DATE);
+      col.setType(Column.DATE);
     }
   )
-  {
-    return dt;
-  }
 }
 
 String tableName() :
@@ -604,21 +614,35 @@ String tableName() :
 {
   < LEGAL_IDENTIFIER >
   {
-    return token.image;
+    return token.image.toLowerCase();
   }
 }
 
-void tableNameList() :
+ArrayList<String> tableNameList() :
 {}
 {
   < ASTERISK >
-| (
-    tableName()
-    (
-      < COMMA >
-      tableName()
-    )*
-  )
+  {
+    return null;
+  }
+| {
+    String s;
+    ArrayList<String> l = new ArrayList<String>();
+  }
+  s = tableName()
+  {
+    l.add(s);
+  }
+  (
+    < COMMA >
+    s = tableName()
+    {
+      l.add(s);
+    }
+  )*
+  {
+    return l;
+  }
 }
 
 String columnName() :
@@ -626,6 +650,6 @@ String columnName() :
 {
   < LEGAL_IDENTIFIER >
   {
-    return token.image;
+    return token.image.toLowerCase();
   }
 }

@@ -2,8 +2,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Table {
+  // schema manager which manages this table
   private SchemaManager sm;
+  // table name
   private String name;
+  // column name to column
   private HashMap<String, Column> columns = new HashMap<String, Column>();
   private boolean hasPrimary = false;
 
@@ -80,6 +83,7 @@ public class Table {
     }
   }
 
+  // check if any columns are referenced by
   public boolean isReferenced() {
     for(Column col : columns.values())
       if(col.getReferenced().size() > 0)
@@ -87,6 +91,7 @@ public class Table {
     return false;
   }
 
+  // save table to db using schema manager
   public void save() {
     for(Column col : columns.values()) {
       sm.putColumn(name, col);
@@ -100,6 +105,7 @@ public class Table {
     }
   }
 
+  // for desc statement
   public void print() {
     String fmt = "%-22.22s%-11.11s%-9.9s%-9.9s";
     System.out.println(String.format("table_name [%s]", name));

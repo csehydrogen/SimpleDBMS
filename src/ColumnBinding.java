@@ -5,6 +5,7 @@ import com.sleepycat.bind.tuple.TupleInput;
 import com.sleepycat.bind.tuple.TupleOutput;
 
 public class ColumnBinding extends TupleBinding<Column> {
+  // encode column object into bytes
   public void objectToEntry(Column col, TupleOutput to) {
     to.writeString(col.getName());
     to.writeInt(col.getType());
@@ -27,6 +28,7 @@ public class ColumnBinding extends TupleBinding<Column> {
     }
   }
 
+  // decode column object from bytes
   public Column entryToObject(TupleInput ti) {
     int n;
     Column col = new Column();

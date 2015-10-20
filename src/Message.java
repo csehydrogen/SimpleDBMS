@@ -25,8 +25,11 @@ public class Message {
   public static final int DROP_SUCCESS = 23;
   public static final int DROP_REFERENCED_TABLE_ERROR = 24;
 
+  // message code
   int code;
+  // optional string argument
   String arg0;
+  // print prompt preceding message
   boolean prompt;
 
   public Message(int code) {

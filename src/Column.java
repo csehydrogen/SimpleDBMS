@@ -50,14 +50,4 @@ public class Column {
       foreign ? "FOR" : ""
     );
   }
-
-  public void print() {
-    System.out.println("Column:");
-    System.out.print("type: ");
-    System.out.println(type);
-    System.out.print("length: ");
-    System.out.println(length);
-    System.out.print("notNull: ");
-    System.out.println(notNull);
-  }
 }

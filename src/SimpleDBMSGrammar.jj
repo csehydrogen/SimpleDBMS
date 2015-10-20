@@ -579,6 +579,7 @@ ArrayList<String> columnNameList() :
   }
 }
 
+// set type and length of column
 void dataType(Column col) :
 {}
 {
@@ -609,6 +610,7 @@ void dataType(Column col) :
   )
 }
 
+// return table name as lowercase string
 String tableName() :
 {}
 {
@@ -618,6 +620,7 @@ String tableName() :
   }
 }
 
+// return null if *
 ArrayList<String> tableNameList() :
 {}
 {
@@ -645,6 +648,7 @@ ArrayList<String> tableNameList() :
   }
 }
 
+// return column name as lowercase string
 String columnName() :
 {}
 {

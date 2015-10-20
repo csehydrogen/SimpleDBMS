@@ -11,6 +11,7 @@ import com.sleepycat.je.OperationStatus;
 
 public class SchemaManager {
   private Environment env;
+  // table name to column
   private Database db;
   private DatabaseConfig dbConfig;
   private ColumnBinding cb;
@@ -33,6 +34,7 @@ public class SchemaManager {
     env.close();
   }
 
+  // check if table with given table name exists
   public boolean tableExists(String tableName) {
     try {
       DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
@@ -44,12 +46,14 @@ public class SchemaManager {
     }
   }
 
+  // drop all tables
   public void dropTables() {
     db.close();
     env.truncateDatabase(null, "db", false);
     db = env.openDatabase(null, "db", dbConfig);
   }
 
+  // drop table with given table name
   public void dropTable(String tableName) {
     Cursor cur = null;
     try {
@@ -73,6 +77,7 @@ public class SchemaManager {
     if(cur != null) cur.close();
   }
 
+  // get string list of all table name
   public ArrayList<String> getTables() {
     ArrayList<String> l = new ArrayList<String>();
     Cursor cur = null;
@@ -92,6 +97,7 @@ public class SchemaManager {
     return l;
   }
 
+  // get table with given table name
   public Table getTable(String tableName) {
     Table t = new Table(this, tableName);
     Cursor cur = null;
@@ -109,6 +115,7 @@ public class SchemaManager {
     return t;
   }
 
+  // remove foreign key referenced-by info from specified column
   public void removeForeign(String tableName, String colName, Foreign f) {
     Cursor cursor = null;
     try {
@@ -130,6 +137,7 @@ public class SchemaManager {
       cursor.close();
   }
 
+  // add foreign key referenced-by info to specified column
   public void addForeign(String tableName, String colName, Foreign f) {
     Cursor cursor = null;
     try {
@@ -160,6 +168,7 @@ public class SchemaManager {
       DatabaseEntry data = new DatabaseEntry(colName.getBytes("UTF-8"));
       if(cursor.getSearchBothRange(key, data, null) == OperationStatus.SUCCESS) {
         Column col = cb.entryToObject(data);
+        // because ranged search is used, we need to check exact column name
         if(col.getName().compareTo(colName) == 0)
           ret = col;
       }

@@ -1,4 +1,6 @@
-public class Value {
+import java.util.List;
+
+public class Value implements ExpTree.CompOperand {
   public static final int NULL = 0;
   public static final int INT = 1;
   public static final int CHAR = 2;
@@ -24,6 +26,23 @@ public class Value {
         return valStr.compareTo(that.valStr) == 0;
       default:
         return true;
+    }
+  }
+
+  public void getForeigns(List<Foreign> lf) {}
+
+  public Value getValue(List<List<Value>> record) { return this; }
+
+  public String toString() {
+    switch (type) {
+      case NULL:
+        return "null";
+      case INT:
+        return Integer.toString(valInt);
+      case CHAR: case DATE:
+        return valStr;
+      default:
+        return "";
     }
   }
 }

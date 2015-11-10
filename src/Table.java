@@ -22,6 +22,8 @@ public class Table {
     this.name = name;
   }
 
+  public String getName() { return name; }
+
   public void addColumn(Column column) throws ParseException {
     if(columns.containsKey(column.getName())) {
       Message.print(Message.DUPLICATE_COLUMN_DEF_ERROR);

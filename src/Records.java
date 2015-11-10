@@ -9,6 +9,10 @@ public class Records {
     table = t;
   }
 
+  public Table getTable() { return table; }
+  public List<Value> getRecord(int i) { return records.get(i); }
+  public int size() { return records.size(); }
+
   public void addRecord(List<Value> record) {
     records.add(record);
   }

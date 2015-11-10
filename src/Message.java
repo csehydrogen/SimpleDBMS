@@ -30,6 +30,12 @@ public class Message {
   public static final int INSERT_DUPLICATE_PRIMARY_KEY_ERROR = 28;
   public static final int INSERT_REFERENTIAL_INTEGRITY_ERROR = 29;
   public static final int INSERT_RESULT = 30;
+  public static final int SELECT_TABLE_EXISTENCE_ERROR = 31;
+  public static final int SELECT_COLUMN_RESOLVE_ERROR = 32;
+  public static final int WHERE_COLUMN_NOT_EXIST = 33;
+  public static final int WHERE_AMBIGUOUS_REFERENCE = 34;
+  public static final int WHERE_TABLE_NOT_SPECIFIED = 35;
+  public static final int WHERE_INCOMPARABLE_ERROR = 36;
 
   // message code
   int code;
@@ -171,6 +177,24 @@ public class Message {
         break;
       case INSERT_RESULT:
         System.out.println("The row is inserted");
+        break;
+      case SELECT_TABLE_EXISTENCE_ERROR:
+        System.out.println(String.format("Selection has failed: ‘%s’ does not exist", arg0));
+        break;
+      case SELECT_COLUMN_RESOLVE_ERROR:
+        System.out.println(String.format("Selection has failed: fail to resolve ‘%s’", arg0));
+        break;
+      case WHERE_COLUMN_NOT_EXIST:
+        System.out.println("Where clause try to reference non existing column");
+        break;
+      case WHERE_AMBIGUOUS_REFERENCE:
+        System.out.println("Where clause contains ambiguous reference");
+        break;
+      case WHERE_TABLE_NOT_SPECIFIED:
+        System.out.println("Where clause try to reference tables which are not specified");
+        break;
+      case WHERE_INCOMPARABLE_ERROR:
+        System.out.println("Where clause try to compare incomparable values");
         break;
     }
   }

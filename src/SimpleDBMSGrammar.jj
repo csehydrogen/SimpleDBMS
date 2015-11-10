@@ -161,7 +161,7 @@ Message query() :
 | (
     selectQuery()
     {
-      return new Message(Message.SELECT);
+      return new Message(Message.EMPTY, false);
     }
   )
 }
@@ -276,129 +276,190 @@ void deleteQuery() :
 }
 
 void selectQuery() :
-{}
+{
+  SelectHelper sh = new SelectHelper();
+}
 {
   < SELECT >
-  selectList()
-  tableExpression()
+  selectList(sh)
+  tableExpression(sh)
+  {
+    sh.process();  }
 }
 
-void selectList() :
+void selectList(SelectHelper sh) :
 {}
 {
   < ASTERISK >
 | (
-    selectedColumn()
+    selectedColumn(sh)
     (
       < COMMA >
-      selectedColumn()
+      selectedColumn(sh)
     )*
   )
 }
 
-void selectedColumn() :
-{}
+void selectedColumn(SelectHelper sh) :
 {
-  tableAndColumnName()
+  Foreign f;
+  String alias = null;
+}
+{
+  f = tableAndColumnName()
   (
     < AS >
-    columnName()
+    alias = columnName()
   )?
+  {
+    sh.selectColumn(f, alias);  }
 }
 
-void tableExpression() :
-{}
+void tableExpression(SelectHelper sh) :
 {
-  fromClause()
+  ExpTree.WhereExpression we = new ExpTree.TrueExpression();
+}
+{
+  fromClause(sh)
   (
-    whereClause()
+    we = whereClause()
   )?
+  {
+    sh.setWhereExpression(we);  }
 }
 
-void fromClause() :
+void fromClause(SelectHelper sh) :
 {}
 {
   < FROM >
-  tableReferenceList()
+  tableReferenceList(sh)
 }
 
-void tableReferenceList() :
+void tableReferenceList(SelectHelper sh) :
 {}
 {
-  referedTable()
+  referedTable(sh)
   (
     < COMMA >
-    referedTable()
+    referedTable(sh)
   )*
 }
 
-void referedTable() :
-{}
+void referedTable(SelectHelper sh) :
 {
-  tableName()
+  String tn, alias = null;
+}
+{
+  tn = tableName()  {
+    if(!sm.tableExists(tn)) {
+      Message.print(Message.SELECT_TABLE_EXISTENCE_ERROR, tn);
+      throw new ParseException();
+    }
+  }
   (
     < AS >
-    tableName()
+    alias = tableName()
   )?
+  {
+    sh.addRecords(sm.getRecords(tn), alias);  }
 }
 
-void whereClause() :
-{}
+ExpTree.BooleanValueExpression whereClause() :
+{
+  ExpTree.BooleanValueExpression bve;
+}
 {
   < WHERE >
-  booleanValueExpression()
+  bve = booleanValueExpression()
+  {
+    return bve;  }
 }
 
 // < BOOLEAN TERM > | < BOOLEAN VALUE EXPRESSION > or < BOOLEAN TERM >
 // changed to
 // < BOOLEAN TERM > [{ or < BOOLEAN TERM > }...]
 // to remove left resursion
-void booleanValueExpression() :
-{}
+ExpTree.BooleanValueExpression booleanValueExpression() :
 {
-  booleanTerm()
+  ExpTree.BooleanValueExpression bve = new ExpTree.BooleanValueExpression();
+  ExpTree.BooleanTerm bt;
+}
+{
+  bt = booleanTerm()
+  {
+    bve.addOp(bt);  }
   (
     < OR >
-    booleanTerm()
+    bt = booleanTerm()
+    {
+      bve.addOp(bt);    }
   )*
+  {
+    return bve;  }
 }
 
 // < BOOLEAN FACTOR > | < BOOLEAN TERM > and < BOOLEAN FACTOR >
 // changed to
 // < BOOLEAN FACTOR > [{ and < BOOLEAN FACTOR > }...]
 // to remove left resursion
-void booleanTerm() :
-{}
+ExpTree.BooleanTerm booleanTerm() :
 {
-  booleanFactor()
+  ExpTree.BooleanTerm bt = new ExpTree.BooleanTerm();
+  ExpTree.BooleanFactor bf;
+}
+{
+  bf = booleanFactor()
+  {    bt.addOp(bf);
+  }
   (
     < AND >
-    booleanFactor()
+    bf = booleanFactor()
+    {
+      bt.addOp(bf);    }
   )*
+  {
+    return bt;  }
 }
 
-void booleanFactor() :
-{}
+ExpTree.BooleanFactor booleanFactor() :
+{
+  ExpTree.BooleanFactor bf = new ExpTree.BooleanFactor();
+  ExpTree.BooleanTest bt;
+}
 {
   (
     < NOT >
+    {
+      bf.setNot(true);    }
   )?
-  booleanTest()
+  bt = booleanTest()
+  {
+    bf.setOp(bt);
+    return bf;  }
 }
 
-void booleanTest() :
-{}
+ExpTree.BooleanTest booleanTest() :
 {
-  predicate()
-| parenthesizedBooleanExpression()
+  ExpTree.BooleanTest bt;
+}
+{
+  (    bt = predicate()
+  | bt = parenthesizedBooleanExpression()
+  )
+  {
+    return bt;  }
 }
 
-void parenthesizedBooleanExpression() :
-{}
+ExpTree.BooleanValueExpression parenthesizedBooleanExpression() :
+{
+  ExpTree.BooleanValueExpression bve;
+}
 {
   < LEFT_PAREN >
-  booleanValueExpression()
+  bve = booleanValueExpression()
   < RIGHT_PAREN >
+  {
+    return bve;  }
 }
 
 // < COMPARISON PREDICATE > | < NULL PREDICATE > have common prefixes of length 2
@@ -411,53 +472,97 @@ void parenthesizedBooleanExpression() :
 //     ( < COMP OP > < COMP OPERAND > | < NULL OPERATION > )
 //   )
 // to reduce length to 1
-void predicate() :
-{}
+ExpTree.Predicate predicate() :
+{
+  ExpTree.CompOperand co;
+  ExpTree.ComparisonPredicate cp;
+  Foreign f;
+  boolean b;
+}
 {
   (
-    comparableValue()
+    co = comparableValue()
+    {
+      cp = new ExpTree.ComparisonPredicate();
+      cp.setLeftOp(co);    }
     < COMP_OP >
-    compOperand()
+    {
+      cp.setCompOp(token.image);
+    }
+    co = compOperand()
+    {
+      cp.setRightOp(co);
+      return cp;
+    }
   )
 | (
-    tableAndColumnName()
+    f = tableAndColumnName()
     (
       (
         < COMP_OP >
-        compOperand()
+        {
+          cp = new ExpTree.ComparisonPredicate();
+          cp.setLeftOp(f);
+          cp.setCompOp(token.image);        }
+        co = compOperand()
+        {
+          cp.setRightOp(co);
+          return cp;        }
       )
-    | nullOperation()
+    | b = nullOperation()
+      {
+        ExpTree.NullPredicate np = new ExpTree.NullPredicate();
+        np.setOp(f);
+        np.setIsNull(b);
+        return np;      }
     )
   )
 }
 
-void compOperand() :
-{}
+ExpTree.CompOperand compOperand() :
 {
-  comparableValue()
-| tableAndColumnName()
+  ExpTree.CompOperand co;
+}
+{
+  (
+    co = comparableValue()
+  | co = tableAndColumnName()
+  )
+  {    return co;
+  }
 }
 
 // [ < TABLE NAME > < PERIOD > ] < COLUMN NAME >
 // need 2 LOOKAHEAD
-void tableAndColumnName() :
-{}
+Foreign tableAndColumnName() :
+{
+  String tn = null, cn;
+}
 {
   (
     LOOKAHEAD(2)
-    tableName()
+    tn = tableName()
     < PERIOD >
   )?
-  columnName()
+  cn = columnName()
+  {
+    return new Foreign(tn, cn);
+  }
 }
 
-void nullOperation() :
+boolean nullOperation() :
 {}
 {
   < IS >
   (
     < NOT_NULL >
+    {
+      return false;
+    }
   | < NULL >
+    {
+      return true;
+    }
   )
 }
 
@@ -533,7 +638,7 @@ Value comparableValue() :
   | < CHAR_STRING >
     {
       v.setType(Value.CHAR);
-      v.setValStr(token.image);
+      v.setValStr(token.image.substring(1, token.image.length() - 1));
     }
   | < DATE_VALUE >
     {

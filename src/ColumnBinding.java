@@ -8,6 +8,7 @@ public class ColumnBinding extends TupleBinding<Column> {
   // encode column object into bytes
   public void objectToEntry(Column col, TupleOutput to) {
     to.writeString(col.getName());
+    to.writeInt(col.getOrd());
     to.writeInt(col.getType());
     to.writeInt(col.getLength());
     to.writeBoolean(col.isNotNull());
@@ -34,6 +35,7 @@ public class ColumnBinding extends TupleBinding<Column> {
     Column col = new Column();
 
     col.setName(ti.readString());
+    col.setOrd(ti.readInt());
     col.setType(ti.readInt());
     col.setLength(ti.readInt());
     col.setNotNull(ti.readBoolean());

@@ -24,6 +24,12 @@ public class Message {
   public static final int DROP_SUCCESS_ALL_TABLES = 22;
   public static final int DROP_SUCCESS = 23;
   public static final int DROP_REFERENCED_TABLE_ERROR = 24;
+  public static final int INSERT_COLUMN_EXISTENCE_ERROR = 25;
+  public static final int INSERT_TYPE_MISMATCH_ERROR = 26;
+  public static final int INSERT_COLUMN_NON_NULLABLE_ERROR = 27;
+  public static final int INSERT_DUPLICATE_PRIMARY_KEY_ERROR = 28;
+  public static final int INSERT_REFERENTIAL_INTEGRITY_ERROR = 29;
+  public static final int INSERT_RESULT = 30;
 
   // message code
   int code;
@@ -147,6 +153,24 @@ public class Message {
         break;
       case DROP_REFERENCED_TABLE_ERROR:
         System.out.println(String.format("Drop table has failed: ‘%s’ is referenced by other table", arg0));
+        break;
+      case INSERT_COLUMN_EXISTENCE_ERROR:
+        System.out.println(String.format("Insertion has failed: ‘%s’ does not exist", arg0));
+        break;
+      case INSERT_TYPE_MISMATCH_ERROR:
+        System.out.println("Insertion has failed: Types are not matched");
+        break;
+      case INSERT_COLUMN_NON_NULLABLE_ERROR:
+        System.out.println(String.format("Insertion has failed: ‘%s’ is not nullable", arg0));
+        break;
+      case INSERT_DUPLICATE_PRIMARY_KEY_ERROR:
+        System.out.println("Insertion has failed: Primary key duplication");
+        break;
+      case INSERT_REFERENTIAL_INTEGRITY_ERROR:
+        System.out.println("Insertion has failed: Referential integrity violation");
+        break;
+      case INSERT_RESULT:
+        System.out.println("The row is inserted");
         break;
     }
   }

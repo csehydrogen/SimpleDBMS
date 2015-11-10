@@ -147,9 +147,9 @@ Message query() :
     }
   )
 | (
-    insertQuery()
+    msg = insertQuery()
     {
-      return new Message(Message.INSERT);
+      return msg;
     }
   )
 | (
@@ -245,12 +245,24 @@ void showTablesQuery() :
   < SHOW_TABLES >
 }
 
-void insertQuery() :
-{}
+Message insertQuery() :
+{
+  String s; Table t;
+}
 {
   < INSERT_INTO >
-  tableName()
-  insertColumnsAndSource()
+  s = tableName()
+  {
+    if(!sm.tableExists(s)) {
+      Message.print(Message.NO_SUCH_TABLE);
+      throw new ParseException();
+    }
+    t = sm.getTable(s);
+  }
+  insertColumnsAndSource(t)
+  {
+    return new Message(Message.INSERT_RESULT);
+  }
 }
 
 void deleteQuery() :
@@ -449,41 +461,89 @@ void nullOperation() :
   )
 }
 
-void insertColumnsAndSource() :
-{}
+void insertColumnsAndSource(Table t) :
+{
+  ArrayList<String> cnl = null;
+  ArrayList<Value> vl;
+}
 {
   (
-    columnNameList()
+    cnl = columnNameList()
   )?
-  valueList()
+  vl = valueList()
+  {
+    t.insert(cnl, vl);
+  }
 }
 
-void valueList() :
-{}
+ArrayList<Value> valueList() :
+{
+  Value v;
+  ArrayList<Value> l = new ArrayList<Value>();
+}
 {
   < VALUES >
   < LEFT_PAREN >
-  value()
+  v = value()
+  {
+    l.add(v);
+  }
   (
     < COMMA >
-    value()
+    v = value()
+    {
+      l.add(v);
+    }
   )*
   < RIGHT_PAREN >
+  {
+    return l;
+  }
 }
 
-void value() :
-{}
+Value value() :
 {
-  < NULL >
-| comparableValue()
+  Value v;
+}
+{
+  (
+    < NULL >
+    {
+      v = new Value();
+      v.setType(Value.NULL);
+    }
+  | v = comparableValue()
+  )
+  {
+    return v;
+  }
 }
 
-void comparableValue() :
-{}
+Value comparableValue() :
 {
-  < INT_VALUE >
-| < CHAR_STRING >
-| < DATE_VALUE >
+  Value v = new Value();
+}
+{
+  (
+    < INT_VALUE >
+    {
+      v.setType(Value.INT);
+      v.setValInt(Integer.parseInt(token.image));
+    }
+  | < CHAR_STRING >
+    {
+      v.setType(Value.CHAR);
+      v.setValStr(token.image);
+    }
+  | < DATE_VALUE >
+    {
+      v.setType(Value.DATE);
+      v.setValStr(token.image);
+    }
+  )
+  {
+    return v;
+  }
 }
 
 void tableElementList(Table t) :
@@ -524,6 +584,7 @@ void columnDefinition(Table t) :
     }
   )?
   {
+    col.setOrd(t.getNumOfCols());
     t.addColumn(col);
   }
 }

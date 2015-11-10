@@ -1,5 +1,6 @@
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.sleepycat.je.Cursor;
 import com.sleepycat.je.Database;
@@ -13,12 +14,12 @@ public class SchemaManager {
   private Environment env;
   // table name to column
   private Database db;
+  private Database records;
   private DatabaseConfig dbConfig;
-  private ColumnBinding cb;
+  private ColumnBinding cb = new ColumnBinding();
+  private RecordBinding rb = new RecordBinding();
 
   public SchemaManager() {
-    cb = new ColumnBinding();
-
     EnvironmentConfig envConfig = new EnvironmentConfig();
     envConfig.setAllowCreate(true);
     env = new Environment(new File("db"), envConfig);
@@ -27,9 +28,11 @@ public class SchemaManager {
     dbConfig.setAllowCreate(true);
     dbConfig.setSortedDuplicates(true);
     db = env.openDatabase(null, "db", dbConfig);
+    records = env.openDatabase(null, "records", dbConfig);
   }
 
   public void close() {
+    records.close();
     db.close();
     env.close();
   }
@@ -48,6 +51,10 @@ public class SchemaManager {
 
   // drop all tables
   public void dropTables() {
+    records.close();
+    env.truncateDatabase(null, "records", false);
+    records = env.openDatabase(null, "records", dbConfig);
+
     db.close();
     env.truncateDatabase(null, "db", false);
     db = env.openDatabase(null, "db", dbConfig);
@@ -75,6 +82,12 @@ public class SchemaManager {
     } catch(Exception e) {
     }
     if(cur != null) cur.close();
+
+    try {
+      DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
+      records.delete(null, key);
+    } catch (Exception e) {
+    }
   }
 
   // get string list of all table name
@@ -187,5 +200,32 @@ public class SchemaManager {
       db.put(null, key, data);
     } catch(Exception e) {
     }
+  }
+
+  public void insertRecord(String tableName, List<Value> lv) {
+    try {
+      DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
+      DatabaseEntry data = new DatabaseEntry();
+      rb.objectToEntry(lv, data);
+      records.put(null, key, data);
+    } catch (Exception e) {
+    }
+  }
+
+  public Records getRecords(String tableName) {
+    Records r = new Records(getTable(tableName));
+    Cursor cur = null;
+    try {
+      cur = records.openCursor(null, null);
+      DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
+      DatabaseEntry data = new DatabaseEntry();
+      cur.getSearchKey(key, data, null);
+      do {
+        r.addRecord(rb.entryToObject(data));
+      } while(cur.getNextDup(key, data, null) == OperationStatus.SUCCESS);
+    } catch(Exception e) {
+    }
+    if(cur != null) cur.close();
+    return r;
   }
 }

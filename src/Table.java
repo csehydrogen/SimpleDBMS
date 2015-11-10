@@ -1,5 +1,8 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Table {
   // schema manager which manages this table
@@ -9,6 +12,10 @@ public class Table {
   // column name to column
   private HashMap<String, Column> columns = new HashMap<String, Column>();
   private boolean hasPrimary = false;
+  private int numOfCols = 0;
+
+  public int getNumOfCols() { return numOfCols; }
+  public Column getColumn(String name) { return columns.get(name); }
 
   public Table(SchemaManager sm, String name) {
     this.sm = sm;
@@ -20,6 +27,7 @@ public class Table {
       Message.print(Message.DUPLICATE_COLUMN_DEF_ERROR);
       throw new ParseException();
     }
+    ++numOfCols;
     columns.put(column.getName(), column);
   }
 
@@ -118,5 +126,99 @@ public class Table {
         col.getKeyString()
       ));
     }
+  }
+
+  public List<Column> getSortedColumns() {
+    List<Column> cl = new ArrayList<Column>(columns.values());
+    Collections.sort(cl);
+    return cl;
+  }
+
+  /**
+   * @param cnl columnNameList
+   * @param vl valueList
+   */
+  public void insert(ArrayList<String> cnl, ArrayList<Value> vl) throws ParseException {
+    List<Column> cl = getSortedColumns();
+
+    // if <COLUMN NAME LIST> omitted
+    if (cnl == null) {
+      cnl = new ArrayList<String>();
+      for (Column c : cl) {
+        cnl.add(c.getName());
+      }
+    }
+
+    // # of column names != # of values
+    if (cnl.size() != vl.size()) {
+      Message.print(Message.INSERT_TYPE_MISMATCH_ERROR);
+      throw new ParseException();
+    }
+
+    // make map from column name to value for efficient search
+    Map<String, Value> cn2v = new HashMap<String, Value>();
+    for (int i = 0; i < cnl.size(); ++i) {
+      String cn = cnl.get(i);
+      // if column name doesn't exist
+      if(!columns.containsKey(cn)) {
+        Message.print(Message.INSERT_COLUMN_EXISTENCE_ERROR, cn);
+        throw new ParseException();
+      }
+      cn2v.put(cnl.get(i), vl.get(i));
+    }
+
+    // create record
+    vl = new ArrayList<Value>();
+    for (Column c : cl) {
+      String cn = c.getName();
+      Value v;
+      if (cn2v.containsKey(cn)) { // value given explicitly
+        v = cn2v.get(cn);
+        if (v.getType() == Value.NULL) {
+          // try to insert null into non-nullable column
+          if (c.isNotNull()) {
+            Message.print(Message.INSERT_COLUMN_NON_NULLABLE_ERROR, cn);
+            throw new ParseException();
+          }
+        } else {
+          // type mismatch
+          if (v.getType() != c.getType()) {
+            Message.print(Message.INSERT_TYPE_MISMATCH_ERROR);
+            throw new ParseException();
+          }
+          // char truncate
+          if (v.getType() == Value.CHAR && v.getValStr().length() > c.getLength()) {
+            v.setValStr(v.getValStr().substring(0, c.getLength()));
+          }
+        }
+      } else { // value not given
+        if (c.isNotNull()) {
+          Message.print(Message.INSERT_COLUMN_NON_NULLABLE_ERROR, cn);
+          throw new ParseException();
+        }
+        v = new Value();
+        v.setType(Value.NULL);
+      }
+      vl.add(v);
+    }
+
+    Records here = sm.getRecords(name);
+    if(!here.checkPrimary(vl)) {
+      Message.print(Message.INSERT_DUPLICATE_PRIMARY_KEY_ERROR);
+      throw new ParseException();
+    }
+    for (int i = 0; i < cl.size(); ++i) {
+      Column c = cl.get(i);
+      if(c.isForeign() && vl.get(i).getType() != Value.NULL) {
+        Foreign f = c.getReferencing();
+        Records there = sm.getRecords(f.getTableName());
+        if(!there.checkForeign(f.getColumnName(), vl.get(i))) {
+          Message.print(Message.INSERT_REFERENTIAL_INTEGRITY_ERROR);
+          throw new ParseException();
+        }
+      }
+    }
+
+    sm.insertRecord(name, vl);
   }
 }

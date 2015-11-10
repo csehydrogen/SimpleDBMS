@@ -1,11 +1,12 @@
 import java.util.TreeSet;
 
-public class Column {
+public class Column implements Comparable<Column>{
   public static final int INT = 1;
   public static final int CHAR = 2;
   public static final int DATE = 3;
 
   private String name;
+  private int ord; // order in table
   private int type;
   private int length = 0;
   private boolean notNull = false;
@@ -16,6 +17,8 @@ public class Column {
 
   public String getName() { return name; }
   public void setName(String name) { this.name = name; }
+  public int getOrd() { return ord; }
+  public void setOrd(int ord) { this.ord = ord; }
   public int getType() { return type; }
   public void setType(int type) { this.type = type; }
   public int getLength() { return length; }
@@ -49,5 +52,9 @@ public class Column {
       primary && foreign ? "/" : "",
       foreign ? "FOR" : ""
     );
+  }
+
+  public int compareTo(Column o) {
+    return this.ord - o.ord;
   }
 }

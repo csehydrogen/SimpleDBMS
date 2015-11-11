@@ -121,7 +121,7 @@ public class Table {
     String fmt = "%-22.22s%-11.11s%-9.9s%-9.9s";
     System.out.println(String.format("table_name [%s]", name));
     System.out.println(String.format(fmt, "column_name", "type", "null", "key"));
-    for(Column col : columns.values()) {
+    for(Column col : getSortedColumns()) {
       System.out.println(String.format(fmt,
         col.getName(),
         col.getTypeString(),

@@ -155,7 +155,7 @@ Message query() :
 | (
     deleteQuery()
     {
-      return new Message(Message.DELETE);
+      return new Message(Message.EMPTY, false);
     }
   )
 | (
@@ -266,13 +266,26 @@ Message insertQuery() :
 }
 
 void deleteQuery() :
-{}
+{
+  String tn;
+  Table t;
+  ExpTree.WhereExpression we = new ExpTree.TrueExpression();
+}
 {
   < DELETE_FROM >
-  tableName()
+  tn = tableName()
+  {
+    if(!sm.tableExists(tn)) {
+      Message.print(Message.NO_SUCH_TABLE);
+      throw new ParseException();
+    }
+    t = sm.getTable(tn);
+  }
   (
-    whereClause()
+    we = whereClause()
   )?
+  {
+    t.delete(we);  }
 }
 
 void selectQuery() :

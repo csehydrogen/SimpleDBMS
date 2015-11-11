@@ -50,4 +50,19 @@ public class Records {
     }
     return false;
   }
+
+  public void remove(String colName, Value v) {
+    int i = table.getColumn(colName).getOrd();
+    for (int j = 0; j < records.size(); ++j) {
+      List<Value> record = records.get(j);
+      if (record.get(i).equals(v)) {
+        List<Value> newRecord = new ArrayList<Value>(record);
+        Value newValue = new Value();
+        newValue.setType(Value.NULL);
+        newRecord.set(i, newValue);
+        table.getSM().updateRecord(table.getName(), record, newRecord);
+        records.set(j, newRecord);
+      }
+    }
+  }
 }

@@ -212,6 +212,37 @@ public class SchemaManager {
     }
   }
 
+  public void updateRecord(String tableName, List<Value> ob, List<Value> nb) {
+    Cursor cur = null;
+    try {
+      cur = records.openCursor(null, null);
+      DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
+      DatabaseEntry data = new DatabaseEntry();
+      rb.objectToEntry(ob, data);
+      cur.getSearchBoth(key, data, null);
+      cur.delete();
+      rb.objectToEntry(nb, data);
+      records.put(null, key, data);
+    } catch(Exception e) {
+      e.printStackTrace();
+    }
+    if(cur != null) cur.close();
+  }
+
+  public void deleteRecord(String tableName, List<Value> lv) {
+    Cursor cur = null;
+    try {
+      cur = records.openCursor(null, null);
+      DatabaseEntry key = new DatabaseEntry(tableName.getBytes("UTF-8"));
+      DatabaseEntry data = new DatabaseEntry();
+      rb.objectToEntry(lv, data);
+      cur.getSearchBoth(key, data, null);
+      cur.delete();
+    } catch(Exception e) {
+    }
+    if(cur != null) cur.close();
+  }
+
   public Records getRecords(String tableName) {
     Records r = new Records(getTable(tableName));
     Cursor cur = null;

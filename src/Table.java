@@ -16,6 +16,7 @@ public class Table {
 
   public int getNumOfCols() { return numOfCols; }
   public Column getColumn(String name) { return columns.get(name); }
+  public SchemaManager getSM() { return sm; }
 
   public Table(SchemaManager sm, String name) {
     this.sm = sm;
@@ -140,7 +141,7 @@ public class Table {
    * @param cnl columnNameList
    * @param vl valueList
    */
-  public void insert(ArrayList<String> cnl, ArrayList<Value> vl) throws ParseException {
+  public void insert(List<String> cnl, ArrayList<Value> vl) throws ParseException {
     List<Column> cl = getSortedColumns();
 
     // if <COLUMN NAME LIST> omitted
@@ -149,6 +150,8 @@ public class Table {
       for (Column c : cl) {
         cnl.add(c.getName());
       }
+      if (cnl.size() > vl.size())
+        cnl = cnl.subList(0, vl.size());
     }
 
     // # of column names != # of values
@@ -222,5 +225,71 @@ public class Table {
     }
 
     sm.insertRecord(name, vl);
+  }
+
+  public void delete(ExpTree.WhereExpression we) throws ParseException {
+    List<Foreign> lf = new ArrayList<Foreign>();
+    we.getForeigns(lf);
+
+    for (Foreign f : lf) {
+      String tn = f.getTableName();
+      if (tn != null && !tn.equals(name)) {
+        Message.print(Message.WHERE_TABLE_NOT_SPECIFIED);
+        throw new ParseException();
+      }
+      if (!columns.containsKey(f.getColumnName())) {
+        Message.print(Message.WHERE_COLUMN_NOT_EXIST);
+        throw new ParseException();
+      }
+      f.setCoord(new SelectHelper.Coord(0, columns.get(f.getColumnName()).getOrd()));
+    }
+
+    List<Integer> idx = new ArrayList<Integer>();
+    Records r = sm.getRecords(name);
+    for (int i = 0; i < r.size(); ++i) {
+      List<List<Value>> record = new ArrayList<List<Value>>();
+      record.add(r.getRecord(i));
+      if(we.eval(record).isTrue()) {
+        idx.add(i);
+      }
+    }
+
+    List<Records> cache = new ArrayList<Records>();
+    for (Column c : columns.values()) {
+      for (Foreign f : c.getReferenced()) {
+        cache.add(sm.getRecords(f.getTableName()));
+      }
+    }
+
+    int cntS = 0, cntF = 0;
+    for (int i : idx) {
+      int j = 0; boolean flag = true;
+      for (Column c : columns.values()) {
+        for (Foreign f : c.getReferenced()) {
+          Records records = cache.get(j++);
+          Column there = records.getTable().getColumn(f.getColumnName());
+          if (there.isNotNull() && records.checkForeign(there.getName(), r.getRecord(i).get(c.getOrd()))) {
+            flag = false;
+          }
+        }
+      }
+      if (flag) {
+        ++cntS;
+        j = 0;
+        for (Column c : columns.values()) {
+          for (Foreign f : c.getReferenced()) {
+            Records records = cache.get(j++);
+            records.remove(f.getColumnName(), r.getRecord(i).get(c.getOrd()));
+          }
+        }
+        sm.deleteRecord(name, r.getRecord(i));
+      } else {
+        ++cntF;
+      }
+    }
+
+    Message.print(Message.DELETE_RESULT, Integer.toString(cntS));
+    if (cntF > 0)
+      Message.print(Message.DELETE_REFERENTIAL_INTEGRITY_PASSED, Integer.toString(cntF));
   }
 }

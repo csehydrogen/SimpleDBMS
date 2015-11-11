@@ -36,6 +36,8 @@ public class Message {
   public static final int WHERE_AMBIGUOUS_REFERENCE = 34;
   public static final int WHERE_TABLE_NOT_SPECIFIED = 35;
   public static final int WHERE_INCOMPARABLE_ERROR = 36;
+  public static final int DELETE_RESULT = 37;
+  public static final int DELETE_REFERENTIAL_INTEGRITY_PASSED = 38;
 
   // message code
   int code;
@@ -195,6 +197,12 @@ public class Message {
         break;
       case WHERE_INCOMPARABLE_ERROR:
         System.out.println("Where clause try to compare incomparable values");
+        break;
+      case DELETE_RESULT:
+        System.out.println(String.format("%s row(s) are deleted", arg0));
+        break;
+      case DELETE_REFERENTIAL_INTEGRITY_PASSED:
+        System.out.println(String.format("%s row(s) are not deleted due to referential integrity", arg0));
         break;
     }
   }
